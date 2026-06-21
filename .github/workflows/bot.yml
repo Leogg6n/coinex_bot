@@ -21,8 +21,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      # CAMBIO IMPORTANTE: Instalamos las librerías manualmente y forzamos la actualización
       - name: Instalar librerías
-        run: pip install -r requirements.txt
+        run: pip install --upgrade requests python-dotenv numpy
 
       - name: Crear archivo .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
