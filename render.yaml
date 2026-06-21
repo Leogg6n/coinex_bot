@@ -1,0 +1,25 @@
+services:
+  - type: worker
+    name: coinex-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: COINEX_API_KEY
+        sync: false
+      - key: COINEX_SECRET_KEY
+        sync: false
+      - key: SYMBOL
+        value: BTCUSDT
+      - key: TIMEFRAME
+        value: 1hour
+      - key: LEVERAGE
+        value: 3
+      - key: CAPITAL_USDT
+        value: 100
+      - key: POSITION_SIZE_PERCENT
+        value: 0.1
+      - key: STOP_LOSS_PERCENT
+        value: 0.02
+      - key: TAKE_PROFIT_PERCENT
+        value: 0.04
