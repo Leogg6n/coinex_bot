@@ -2,20 +2,19 @@ name: Bot de Trading Automático (Cada 4h)
 
 on:
   schedule:
-    # Se ejecuta a las 0:00, 4:00, 8:00, 12:00, 16:00 y 20:00 (UTC)
     - cron: '0 */4 * * *'
-  workflow_dispatch:  # Permite ejecutarlo manualmente desde la web
+  workflow_dispatch:
 
 jobs:
   run-trading-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 230  # Se detiene antes de las 6h para guardar el estado
+    timeout-minutes: 230
 
     steps:
-      - name: Descargar el código (con el estado guardado)
+      - name: Descargar el código
         uses: actions/checkout@v3
         with:
-          persist-credentials: true  # Permite que el bot vuelva a subir cambios
+          persist-credentials: true
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -25,14 +24,12 @@ jobs:
       - name: Instalar librerías
         run: pip install -r requirements.txt
 
-      # Crear el .env con el secreto que guardaste en GitHub
       - name: Crear archivo .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
       - name: Ejecutar el bot
         run: python bot.py
 
-      # Después de que el bot termine o lo maten, subimos el estado actualizado
       - name: Guardar el estado en el repositorio
         run: |
           git config --global user.name "github-actions[bot]"
