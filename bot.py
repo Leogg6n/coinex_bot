@@ -56,12 +56,10 @@ def paper_trade(signal, price):
         position_qty = current_position['position_qty']
         margin_used = current_position['margin_used']
         
-        # Calculamos el precio de cierre (SL/TP o Trailing)
         close_price = None
         sl_triggered = False
         tp_triggered = False
         
-        # Trailing Stop Logic
         if trailing_stop_price is None:
             if is_long and price >= entry * 1.02:
                 trailing_stop_price = entry * 1.01
@@ -84,7 +82,6 @@ def paper_trade(signal, price):
                     trailing_stop_price = new_trail
                     log(f"🔄 Trailing Stop movido a {trailing_stop_price:.2f}")
         
-        # Chequeo de Stop Loss y Take Profit
         if is_long:
             if price <= (trailing_stop_price if trailing_stop_price else entry * (1 - SL_PERCENT)):
                 close_price = price
@@ -94,7 +91,7 @@ def paper_trade(signal, price):
                 close_price = price
                 tp_triggered = True
                 log(f"🟢 TAKE PROFIT (Long) ejecutado a {price}")
-        else:  # Short
+        else:
             if price >= (trailing_stop_price if trailing_stop_price else entry * (1 + SL_PERCENT)):
                 close_price = price
                 sl_triggered = True
@@ -104,9 +101,7 @@ def paper_trade(signal, price):
                 tp_triggered = True
                 log(f"🟢 TAKE PROFIT (Short) ejecutado a {price}")
         
-        # Si se activó cierre, calculamos ganancias/pérdidas REALES con comisiones
         if sl_triggered or tp_triggered:
-            # Cálculo del P&L y comisiones
             position_value_close = position_qty * close_price
             
             if is_long:
@@ -129,7 +124,7 @@ def paper_trade(signal, price):
             save_state()
             return
     
-    # --- Lógica de apertura de posición ---
+    # --- Lógica de apertura de posición (Con Step Size de CoinEx) ---
     if not current_position and signal != 'none':
         # Calculamos el margen a invertir
         margin_to_invest = balance_usdt * POSITION_SIZE_PERCENT
@@ -145,12 +140,29 @@ def paper_trade(signal, price):
             log("❌ Balance insuficiente para abrir posición.")
             return
         
-        # Calcular cantidad de contrato (por ejemplo, BTC)
+        # Calcular cantidad de contrato (ejemplo: BTC)
         position_qty = (margin_to_invest * LEVERAGE) / price
+        
+        # --- NUEVO: Redondear al Step Size de CoinEx (0.00001 para BTC) ---
+        step_size = 0.00001
+        # Ajustamos la cantidad al step más cercano (redondeo hacia abajo para no pasarnos del margen)
+        position_qty = (int(position_qty / step_size)) * step_size
+        
+        # Recalcular el valor real de la posición tras el redondeo
+        position_value = position_qty * price
+        
+        # Si tras redondear no llega al mínimo de 5 USDT, la cancelamos
+        if position_value < MIN_POSITION_VALUE_USDT:
+            log(f"❌ Tras redondeo, el valor de la posición ({position_value:.2f}) no alcanza el mínimo de 5 USDT. Operación cancelada.")
+            return
+        
+        # Recalcular el margen real usado tras el redondeo
+        margin_to_invest = position_value / LEVERAGE
+        
         fee_open = (position_qty * price) * FEE_PERCENT
         
         log(f"📈 Señal {signal.upper()} confirmada. Abriendo posición a {price}")
-        log(f"📊 Margen usado: {margin_to_invest:.2f} USDT | Valor posición: {position_qty * price:.2f} USDT | Comisión apertura: -{fee_open:.2f} USDT")
+        log(f"📊 Cantidad exacta de contrato: {position_qty:.5f} BTC | Valor posición: {position_value:.2f} USDT | Margen usado: {margin_to_invest:.2f} USDT | Comisión apertura: -{fee_open:.2f} USDT")
         
         current_position = {
             'side': 'buy' if signal == 'buy' else 'sell',
@@ -167,7 +179,7 @@ def paper_trade(signal, price):
 
 def main_loop():
     load_state()
-    log("🚀 Bot ULTRA REALISTA: Comisiones 0.05% + Mínimo CoinEx (5 USDT)")
+    log("🚀 Bot ULTRA REALISTA: Comisiones 0.05% + Mínimo CoinEx (5 USDT) + Step Size BTC 0.00001")
     log(f"Capital inicial: {CAPITAL} USDT | Balance actual: {balance_usdt:.2f} USDT")
     
     while True:
